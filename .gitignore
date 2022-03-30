@@ -127,3 +127,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# non-pdf formatted files
+*.hwp
+*.doc
+*.docx
