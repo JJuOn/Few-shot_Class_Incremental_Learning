@@ -132,3 +132,12 @@ dmypy.json
 *.hwp
 *.doc
 *.docx
+
+__pycache__/
+data
+.vector_cache
+dataset
+dumped
+logs
+*/__pycache__
+tb/
