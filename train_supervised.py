@@ -67,8 +67,8 @@ def main():
         else:
             n_cls = 64
             if opt.continual:
-                n_cls = 60
-                # n_cls = 20
+                # n_cls = 60
+                n_cls = 20
 
     elif opt.dataset == 'tieredImageNet':
         train_trans, test_trans = transforms_options[opt.transform]
@@ -235,6 +235,8 @@ def train(epoch, train_loader, model, criterion, optimizer, opt, lang_puller=Non
                                         model.classifier.weight)
             loss += penalty
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
+        print(loss.item())
+        print(input)
         losses.update(loss.item(), input.size(0))
         top1.update(acc1[0], input.size(0))
         top5.update(acc5[0], input.size(0))

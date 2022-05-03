@@ -78,8 +78,8 @@ def main():
         if opt.use_trainval:
             n_cls = 80
         else:
-            n_cls = 60
-            # n_cls = 20
+            # n_cls = 60
+            n_cls = 20
     else:
         raise NotImplementedError(opt.dataset)
 

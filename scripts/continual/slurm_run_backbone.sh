@@ -49,10 +49,10 @@ python train_supervised.py --trial pretrain \
                                --tb_path tb \
                                --data_root $DATA_PATH \
                                --classifier linear \
-                               --model_path $BACKBONE_FOLDER/2/base60 \
+                               --model_path $BACKBONE_FOLDER/2/base20 \
                                --continual \
                                --model resnet18 \
                                --no_dropblock \
                                --save_freq 100 \
                                --no_linear_bias \
-                               --set_seed 2 | tee logs/fine_tune_seed2_base60.out
+                               --set_seed 2 | tee logs/run_backbone_seed2_base20.out

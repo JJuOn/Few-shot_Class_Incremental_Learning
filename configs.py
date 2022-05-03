@@ -96,6 +96,11 @@ def parse_option_eval():
     parser.add_argument('--target_train_loss',  type=float, default=1.0, help='When to stop fine-tuning.')
     parser.add_argument('--saliency',  action='store_true', help='append label to the beginning description')
     parser.add_argument('--use_episodes', action='store_true', help='use exact XtarNet episodes.')
+    # added
+    parser.add_argument('--reuse_novel', action='store_true', help='reuse previous novel weights')
+    parser.add_argument('--calibrate_distribution', action='store_true', help='calibrate distribution')
+    parser.add_argument('--top_k', type=int, default=3, help='the number to select top-k near base classes')
+    parser.add_argument('--num_samples', type=int, default=5, help='the number of samples from calibrated distribution')
 
     opt = parser.parse_args()
 

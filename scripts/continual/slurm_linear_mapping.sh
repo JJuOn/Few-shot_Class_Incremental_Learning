@@ -65,7 +65,7 @@ cmt
 # For a single run comment out above nested for loop, leaving variable definitions,
 # and use below.
 
-BACKBONE_PATH="${DUMPED_PATH}/backbones/continual/resnet18/2/base60/resnet18_last.pth"
+BACKBONE_PATH="${DUMPED_PATH}/backbones/continual/resnet18/2/base20/resnet18_last.pth"
 python eval_incremental.py --model_path $BACKBONE_PATH \
                              --model resnet18 \
                              --no_dropblock \
@@ -88,6 +88,9 @@ python eval_incremental.py --model_path $BACKBONE_PATH \
                              --glove \
                              --attraction_override "mapping_linear_label2image" \
                              --n_base_support_samples 1 \
-                             # --memory_replay 1 \
-                             | tee logs/linear_mapping_seed2_base60_wo_mem.out
+                             --n_ways 10 \
+                             --memory_replay 1 \
+                             --calibrate_distribution \
+                             --reuse_novel | tee logs/linear_mapping_seed2_base20_dc.out
+                             
 

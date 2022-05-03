@@ -85,8 +85,8 @@ class LangPuller(nn.Module):
     def forward(self, base_weight, mask=False):
         if self.mapping_model is None:
             # Default way of computing pullers is thru sem. sub. reg.:
-            print(self.novel_embeds.shape) # 10 x 300
-            print(self.base_embeds.shape) # 20 x 300
+            # print(self.novel_embeds.shape) # 10 x 300
+            # print(self.base_embeds.shape) # 20 x 300
             scores = self.novel_embeds @ torch.transpose(self.base_embeds, 0, 1)
             if mask:
                 scores.fill_diagonal_(-9999)
@@ -103,7 +103,7 @@ class LangPuller(nn.Module):
 
     def get_projected_weight(self, pull, base_weight, weights):
         tr = torch.transpose(base_weight, 0, 1)
-        Q, R = torch.qr(tr, some=True) # Q is 640x60
+        Q, R = torch.linalg.qr(tr) # Q is 640x60
         mut = weights @ Q # mut is 5 x 60
         mutnorm = mut / torch.norm(base_weight, dim=1).unsqueeze(0)
         return mutnorm @ base_weight

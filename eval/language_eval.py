@@ -17,6 +17,7 @@ from models.util import get_embeds
 from torch import optim
 import torch.nn.functional as F
 
+from calibrate import distribution_calibration
 
 def validate(query_xs, query_ys_id, net, criterion, opt, epoch):
     net.eval()
@@ -143,6 +144,15 @@ def few_shot_finetune_incremental_test(net,
         basec_map_rev = {}
         for k, v in basec_map.items():
             basec_map_rev[v] = k
+    
+    if opt.calibrate_distribution:
+        base_features = torch.load('dumped/backbones/continual/resnet18/2/base20/base_features.pth')
+        base_means = []
+        base_covs = []
+        for k in base_features.keys():
+            feat = base_features[k]
+            base_means.append(torch.mean(feat, dim=0))
+            base_covs.append(torch.cov(feat.T))
 
     # Iterate over sessions.
     for idx in range(iter_num):
@@ -153,6 +163,10 @@ def few_shot_finetune_incremental_test(net,
             support_xs = torch.cat([support_xs, base_support_xs], 0)
         if vis:
             novelimgs = query_xs.detach().numpy()
+
+        if opt.calibrate_distribution:
+            sampled_data = []
+            sampled_label = []
             
         
         # Get vocabs for the loaders.
@@ -224,28 +238,44 @@ def few_shot_finetune_incremental_test(net,
                 lang_puller = LangPuller(opt, vocab_base, vocab_novel)
                 previous_vocab = vocab_base
                 previous_weights = base_weight
-            else:
+            elif opt.reuse_novel:
                 # Augment the last layer 
                 lang_puller.update_base_embeds(prev_vocab_novel)
                 lang_puller.update_novel_embeds(vocab_novel)
                 previous_vocab = prev_vocab_base + prev_vocab_novel
                 previous_weights = net.classifier.weight[:len(vocab_base),:].detach().clone().requires_grad_(False)
+            else:
+                lang_puller.update_novel_embeds(vocab_novel)
 
             # linear mapping code
             if opt.attraction_override == "mapping_linear_label2image":
-                linear_map = LinearMap(300,640).cuda()
-                optimizer = optim.SGD(linear_map.parameters(),lr=1.0, weight_decay=5e-4)
-                label_embeds = get_embeds('word_embeds/miniImageNet_dim500.pickle',vocab=previous_vocab)[:,:300].float().cuda()
-                print('Learn mapping')
-                for epoch in range(1000):
-                    optimizer.zero_grad()
-                    pred = linear_map(label_embeds)
-                    loss = F.mse_loss(pred, previous_weights)
-                    loss.backward()
-                    optimizer.step()
-                lang_puller.mapping_model = linear_map.cuda()
-            
+                if idx == 0:
+                    linear_map = LinearMap(300,640).cuda()
+                    optimizer = optim.SGD(linear_map.parameters(),lr=1.0, weight_decay=5e-4)
+                    label_embeds = get_embeds('word_embeds/miniImageNet_dim500.pickle',vocab=previous_vocab)[:,:300].float().cuda()
+                    print('Learn mapping')
+                    for epoch in range(1000):
+                        optimizer.zero_grad()
+                        pred = linear_map(label_embeds)
+                        loss = F.mse_loss(pred, previous_weights)
+                        loss.backward()
+                        optimizer.step()
+                    lang_puller.mapping_model = linear_map.cuda()
+                elif opt.reuse_novel:
+                    linear_map = LinearMap(300,640).cuda()
+                    optimizer = optim.SGD(linear_map.parameters(),lr=1.0, weight_decay=5e-4)
+                    label_embeds = get_embeds('word_embeds/miniImageNet_dim500.pickle',vocab=previous_vocab)[:,:300].float().cuda()
+                    print('Learn mapping')
+                    for epoch in range(1000):
+                        optimizer.zero_grad()
+                        pred = linear_map(label_embeds)
+                        loss = F.mse_loss(pred, previous_weights)
+                        loss.backward()
+                        optimizer.step()
+                    lang_puller.mapping_model = linear_map.cuda()
+
             pullers = lang_puller(previous_weights)
+                
 
         # Optimizer
         optimizer = get_optim(net, opt)  # TODO anything to load from ckpt?
@@ -263,14 +293,30 @@ def few_shot_finetune_incremental_test(net,
             freeze_backbone_weights(net, opt, epoch, exclude=["classifier"])
             support_xs = support_xs.cuda()
             support_ys_id = support_ys_id.cuda()
-
+            
             # Compute output
             if opt.classifier in ["lang-linear", "description-linear"] and opt.attention is not None:
                 output, alphas = net(support_xs, get_alphas=True)
                 loss = criterion(output, support_ys_id) + opt.diag_reg * criterion(alphas, support_ys_id)
             else:
-                output = net(support_xs)
+                feats, output = net(support_xs, is_feat=True)
                 loss = criterion(output, support_ys_id)
+                # TODO: distribution calibration
+                if opt.calibrate_distribution:
+                    if isinstance(sampled_data,list) and len(sampled_data) == 0:
+                        with torch.no_grad():
+                            novel_feat = feats[-1]
+                            for i, f in enumerate(novel_feat):
+                                f = f.cpu()
+                                calibrated_mean, calibrated_cov = distribution_calibration(f, base_means, base_covs, k=opt.top_k)
+                                calibrated_distribution = torch.distributions.multivariate_normal.MultivariateNormal(calibrated_mean, calibrated_cov)
+                                sampled_data.append(calibrated_distribution.rsample((opt.num_samples,)))
+                                sampled_label += [support_ys_id[i].item()] * opt.num_samples
+                        sampled_data = torch.cat(sampled_data, dim=0).cuda()
+                        sampled_label = torch.LongTensor(sampled_label).cuda()
+                    calibrated_pred = net.classifier(sampled_data)
+                    calibrated_loss = criterion(calibrated_pred, sampled_label)
+                    loss += calibrated_loss
                 
             # Memory replay
             if opt.memory_replay and len(memory) > 0:
@@ -308,10 +354,14 @@ def few_shot_finetune_incremental_test(net,
                         pullers = lang_puller.get_projected_weight(opt.label_pull,
                                                                     base_weight,
                                                                     net.classifier.weight[len(vocab_base):,:])
-                    elif idx > 0:
+                    elif opt.reuse_novel:
                         previous_weights = net.classifier.weight[:len(vocab_base),:].detach().clone().requires_grad_(False)
                         pullers = lang_puller.get_projected_weight(opt.label_pull,
                                                                     previous_weights,
+                                                                    net.classifier.weight[len(vocab_base):,:])
+                    else:
+                        pullers = lang_puller.get_projected_weight(opt.label_pull,
+                                                                    base_weight,
                                                                     net.classifier.weight[len(vocab_base):,:])
 
                 reg = lang_puller.loss1(opt.label_pull,
@@ -412,10 +462,10 @@ def few_shot_finetune_incremental_test(net,
         acc_novel.update(test_acc)
         
         # Number of base classes
-        w1 = 60 if opt.dataset == "miniImageNet" else 200 # tiered
+        w1 = 20 if opt.dataset == "miniImageNet" else 200 # tiered
 
         # Number of novel classes
-        w2 = len(vocab_base) + len(vocab_novel) - 60
+        w2 = len(vocab_base) + len(vocab_novel) - 20
 
         # Accuracy is a weighted average according to the total
         # number of classes in each category (base and novel).
