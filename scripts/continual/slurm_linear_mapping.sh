@@ -90,7 +90,6 @@ python eval_incremental.py --model_path $BACKBONE_PATH \
                              --n_base_support_samples 1 \
                              --n_ways 10 \
                              --memory_replay 1 \
-                             --calibrate_distribution \
-                             --reuse_novel | tee logs/linear_mapping_seed2_base20_dc.out
+                             --reuse_novel | tee logs/linear_mapping_seed2_base20.out
                              
 
