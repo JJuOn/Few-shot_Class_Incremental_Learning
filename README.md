@@ -19,7 +19,7 @@ Project repository for KHU Capstone Design 1
 - Python 3.6.9  
 - Pytorch 1.9.0  
 - CUDA 11.1  
-
+- RTX 3090
 ---
 
 ## Dataset preparation  
