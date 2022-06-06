@@ -136,7 +136,6 @@ dmypy.json
 __pycache__/
 data
 .vector_cache
-dataset
 dumped
 logs
 */__pycache__
