@@ -8,10 +8,10 @@ Project repository for KHU Capstone Design 1
 |:----------------------:|:-----------:|:---------:|:---------:|:---------:|:---------:|
 |      Subspace Reg.     |      X      | **62.27** |   47.30   |   18.98   |   34.14   |
 |      Subspace Reg.     |      O      | **62.27** |  _47.45_  |   19.62   |  _34.25_  |
-| Semantic Subspace Reg. |      X      |  _57.33_  |   44.00   |   19.14   |   32.69   |
-| Semantic Subspace Reg. |      O      |  _57.33_  |   44.50   | **21.56** |   33.58   |
-|     Linear Mapping     |      X      |   59.87   | **47.60** |   18.62   |   33.26   |
-|     Linear Mapping     |      O      |   59.87   |   46.80   |  _21.12_  | **34.33** |
+| Semantic Subspace Reg. |      X      |   57.33   |   44.00   |   19.14   |   32.69   |
+| Semantic Subspace Reg. |      O      |   57.33   |   44.50   | **21.56** |   33.58   |
+|     Linear Mapping     |      X      |  _59.87_  | **47.60** |   18.62   |   33.26   |
+|     Linear Mapping     |      O      |  _59.87_  |   46.80   |  _21.12_  | **34.33** |
 
 ---
 
